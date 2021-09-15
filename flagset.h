@@ -40,6 +40,13 @@ struct FlagSet
   {
     bitset = o.bitset;
     return *this;
+  }  
+
+  FlagSet operator=(const T&val)
+  {
+    reset();
+    set_true(val);
+    return *this;    
   }
 
   FlagSet operator&(const T&val)
@@ -92,6 +99,16 @@ struct FlagSet
   bool operator==(const FlagSet &o) const
   {
     return bitset == o.bitset;
+  }
+
+  bool operator==(const T b) const
+  {
+    return get_true(b);
+  }
+
+  bool operator!=(const T b) const
+  {
+    return !get_true(b);
   }
 
   std::size_t size() const
@@ -158,6 +175,10 @@ private:
     bitset[static_cast<unsigned>(val)] = 1;
   }
 
+  bool get_true(const T&val) const
+  {
+    return bitset[static_cast<unsigned>(val)] == 1;
+  }
 };
 
 template<typename T>

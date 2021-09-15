@@ -2,8 +2,10 @@
 
 #include <array>
 #include <forward_list>
-#include <unordered_map>
+#include <memory>
+#include <optional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #pragma once
@@ -76,10 +78,19 @@ enum class RuleFlags {
 class Variable
 {
 public:
-	Variable(std::string &name, std::string &value) : name(name), value(value) {};
+	Variable() {};
+	Variable(std::string &name, std::string &value) : name(name)
+	{
+		values.push_back(value);
+	};
 
 	std::string name;
-	std::string value;
+	// not sure if this should be a list or a single value
+	std::vector<std::string> values;
+
+	static bool get(const std::string &name, Variable &out);
+private:
+	static std::unordered_map<std::string, Variable> all;
 };
 
 typedef std::vector<Variable> Variables;
@@ -122,18 +133,28 @@ class Target
 public:
 	Target() { }
 
-	Target(const Target &from)
-		: name(from.name), bound_name(from.bound_name)
+	std::shared_ptr<Target> clone()
 	{
-		flags = TargetFlags::NotFile | TargetFlags::Internal;
-	}	
+		auto clone = std::make_shared<Target>();
+		clone->name = name;
+		clone->bound_name = bound_name;
+
+		return clone;
+	}
+
+	// may need an actual explicit partial clone
+	// Target(const Target &from)
+	// 	: name(from.name), bound_name(from.bound_name)
+	// {
+	// 	flags = TargetFlags::NotFile | TargetFlags::Internal;
+	// }
 
 	void touch()
 	{
 		flags |= TargetFlags::Touched;
 	}
 
-	static Target& bind(const std::string &name);
+	static std::shared_ptr<Target> bind(const std::string &name);
 	static void touch(const std::string &name);
 
 	std::string name;
@@ -145,8 +166,8 @@ public:
 	FlagSet<TargetFlags> flags;
 	TargetBinding binding;
 
-	std::vector<Target> depends;
-	std::vector<Target> includes;
+	std::vector<std::shared_ptr<Target>> depends;
+	std::shared_ptr<Target> includes;
 
 	time_t time;
 	time_t leaf;
@@ -157,12 +178,15 @@ public:
 	int status;
 	int async_count;
 
-	std::vector<Target> parents;
+	std::vector<std::shared_ptr<Target>> parents;
 
 	std::string commands;
 private:
-	static std::unordered_map<std::string, Target> targets;
+	static std::unordered_map<std::string, std::shared_ptr<Target>> targets;
 };
+
+void
+append_target_chain(std::vector<std::shared_ptr<Target>> &target, const std::vector<std::shared_ptr<Target>> &chain);
 
 class Command
 {

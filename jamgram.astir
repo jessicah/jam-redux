@@ -1,0 +1,110 @@
+finite automaton JamTokenizer {
+	ignored root WhiteSpace = [' ' '\n' '\r' '\t' ]+;
+
+	root NotEqual = "!=";
+	root Not = "!";
+	root LogicalAnd = "&&";
+	root And = "&";
+	root LeftParen = "(";
+	root RightParen = ")";
+	root Append = "+=";
+	root Colon = ":";
+	root SemiColon = ";";
+	root LessOrEqual = "<=";
+	root LessThan = "<";
+	root Equals = "=";
+	root GreaterOrEqual = ">=";
+	root GreaterThan = ">";
+	root DefaultAssign = "?=";
+	root LeftBracket = "[";
+	root RightBracket = "]";
+	root LeftBrace = "{";
+	root Or = "|";
+	root LogicalOr = "||";
+	root RightBrace = "}";
+	root Actions = "actions";
+	root Bind = "bind";
+	root Break = "break";
+	root Case = "case";
+	root Continue = "continue";
+	root Default = "default";
+	root Else = "else";
+	root Existing = "existing";
+	root For = "for";
+	root If = "if";
+	root Ignore = "ignore";
+	root In = "in";
+	root Include = "include";
+	root JumpToEof = "jumptoeof";
+	root Local = "local";
+	root Maxline = "maxline";
+	root On = "on";
+	root Piecemeal = "piecemeal";
+	root Quietly = "quietly";
+	root Return = "return";
+	root Rule = "rule";
+	root Switch = "switch";
+	root Together = "together";
+	root Update = "updated";
+	root While = "while";
+	root String = [^ ' ' '\n' '\r' '\t']+;
+}
+
+LL(finite) parser JamParser with ambiguity_resolved_by_precedence on JamTokenizer {
+	root category JamRules;
+
+	production ListOfRules : JamRules = JamRule*;
+	production LocalRules : JamRules = Local List? SemiColon JamRules*;
+	production LocalAssignedRules : JamRules = Local List? Equals List? SemiColon JamRules*;
+
+	root category JamRule;
+
+	production BlockRule : JamRule = LeftBrace JamRules* RightBrace;
+	production IncludeRUle : JamRule = Include List SemiColon;
+	production JumpToEofRule : JamRule = JumpToEof List SemiColon;
+	production ArgumentsRule : JamRule = Argument ListOfLists SemiColon;
+	production AssignArgumentRule : JamRule = Argument Assignment List SemiColon;
+	production OnArgumentRule : JamRule = Argument On List Assignment List SemiColon;
+	production BreakRule : JamRule = Break List? SemiColon;
+	production ContinueRule : JamRule = Continue List? SemiColon;
+	production ReturnRule : JamRule = Return List? SemiColon;
+	production ForRule : JamRule = For Argument In List LeftBrace JamRules RightBrace;
+	production SwitchRule : JamRule = Switch List LeftBrace CaseStatement* RightBrace;
+	// if expr { block }
+	// if expr { block } else rule
+	// while expr { block }
+	production RuleRule : JamRule = Rule Argument Parameters? LeftBrace JamRules* RightBrace;
+	production OnRule : JamRule = On Argument JamRule;
+	// actions eflags arg bindlist { /* scan string? */ string /* scan normal? */ }
+	
+
+	production List = String List*;
+
+	production ListOfLists
+		= List?
+		| List Colon ListOfLists
+		;
+
+	production Argument
+		= String
+		| LeftBracket Function RightBracket
+		;
+
+	production Function
+		= Argument ListOfLists
+		| On Argument Argument ListOfLists
+		| On Argument Return List
+		;
+	
+	production Assignment
+		= Equals
+		| Append
+		| DefaultAssign
+		| Default Equals
+		;
+	
+	production CaseStatement = Case Argument Colon JamRules*;
+
+	production Parameters = Argument | Argument Colon Parameters;
+}
+

@@ -14,20 +14,24 @@ path_parse(const std::string &file, path_info &info)
 		return false;
 	}
 
-	info.path = file;
+	if (file == "." || file == "..")
+	{
+		info.set_dir(file);
+		return true;
+	}
 
-	std::string_view view(info.path);
+	std::string_view view(file);
 
 	std::string_view::size_type end;
 
-	// Look for `<grist>` and remove if found
+	// Look for `<grist>`
 	if (view.front() == '<')
 	{
 		end = view.find('>');
 
 		if (end != view.npos)
 		{
-			info.grist = view.substr(0, end + 1);
+			info.set_grist(view.substr(0, end + 1));
 			view.remove_prefix(end + 1);
 		}
 		else
@@ -42,7 +46,7 @@ path_parse(const std::string &file, path_info &info)
 	
 	if (end != view.npos)
 	{
-		info.dir = view.substr(0, end);
+		info.set_dir(view.substr(0, end));
 		view.remove_prefix(end + 1);
 	}
 
@@ -51,7 +55,7 @@ path_parse(const std::string &file, path_info &info)
 
 	if (end != view.npos && view.back() == ')')
 	{
-		info.member = view.substr(end);
+		info.set_member(view.substr(end));
 		view.remove_suffix(view.size() - end);
 	}
 
@@ -60,12 +64,12 @@ path_parse(const std::string &file, path_info &info)
 
 	if (end != view.npos)
 	{
-		info.suffix = view.substr(end + 1);
+		info.set_suffix(view.substr(end + 1));
 		view.remove_suffix(view.size() - end);
 	}
 
 	// And base remains
-	info.base = view;
+	info.set_base(view);
 
 	return true;
 }
@@ -75,8 +79,6 @@ std::string path_build(const path_info &info)
 {
 	// path_parent can modify itself, so we need to do this
 	std::string buffer;
-
-	buffer.resize(info.path.length());
 
 	if (info.grist.empty() == false)
 	{
@@ -119,6 +121,7 @@ std::string path_build(const path_info &info)
 
 	if (info.suffix.empty() == false)
 	{
+		buffer += '.';
 		buffer += info.suffix;
 	}
 
@@ -144,19 +147,12 @@ void path_parent(path_info &info)
 	info.base = {};
 	info.suffix = {};
 	info.member = {};
-
-	// should we update the internal path?
 }
 
 
 
 std::string normalize_path(std::string_view path)
 {
-	if (path.empty())
-	{
-		return {};
-	}
-
 	std::vector<std::string_view> components;
 
 	bool is_absolute = path.front() == '/';
@@ -197,9 +193,7 @@ std::string normalize_path(std::string_view path)
 	{
 		// prepend the current working directory
 		char *cwd = getcwd(NULL, 0);
-
-		result += cwd;
-
+		result = cwd;
 		free(cwd);
 	}
 

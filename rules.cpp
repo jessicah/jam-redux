@@ -1,9 +1,10 @@
 #include "types.h"
 
+#include <algorithm>
 #include <unordered_map>
 
 std::unordered_map<std::string, Rule> Rule::rules;
-std::unordered_map<std::string, Target> Target::targets;
+std::unordered_map<std::string, std::shared_ptr<Target>> Target::targets;
 
 Rule& Rule::bind(const std::string &name)
 {
@@ -18,16 +19,18 @@ Rule& Rule::bind(const std::string &name)
 }
 
 
-Target& Target::bind(const std::string &name)
+std::shared_ptr<Target> Target::bind(const std::string &name)
 {
-	auto &target = Target::targets[name];
+	//auto &target = Target::targets[name];
+	auto target = Target::targets.try_emplace(name, std::make_shared<Target>());
 
-	if (target.name.empty()) {
-		target.name = name;
-		target.bound_name = name;
+	// if we've constructed a new Target...
+	if (target.second) {
+		target.first->second->name = name;
+		target.first->second->bound_name = name;
 	}
 
-	return target;
+	return target.first->second;
 }
 
 
@@ -36,9 +39,9 @@ Target& Target::bind(const std::string &name)
 
 void Target::touch(const std::string &name)
 {
-	auto &target = Target::bind(name);
+	auto target = Target::bind(name);
 
-	target.flags |= TargetFlags::Touched;
+	target->flags |= TargetFlags::Touched;
 }
 
 
@@ -51,4 +54,11 @@ Targets chain_targets(Targets &chain, Targets &targets)
 	
 	// a chain has a tail, what is it used for?
 	return {};
+}
+
+// target is the existing vector to append the chain to
+void
+append_target_chain(std::vector<std::shared_ptr<Target>> &target, const std::vector<std::shared_ptr<Target>> &chain)
+{
+	std::copy(chain.begin(), chain.end(), std::back_inserter(target));
 }
